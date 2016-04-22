@@ -1,0 +1,749 @@
+<html>
+
+	<head>
+		<title></title>
+        <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700,300,800' rel='stylesheet' type='text/css'> 
+		<style>
+body{
+    background:black;
+}
+		</style>
+	</head>
+
+	<body>
+
+        <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+		<script src='scripts/path.min.js'></script> 
+		<script src='scripts/three.min.js'></script> 
+		<script src='scripts/Tween.js'></script>
+		<script src='scripts/OrbitControls.js'></script>
+		<script src='scripts/BloomPass.js'></script>
+
+		<script>
+            THREE.ShaderTypes = {
+
+            'phongDiffuse' : {
+
+                uniforms: {
+
+                    "uDirLightPos": { type: "v3", value: new THREE.Vector3() },
+                    "uDirLightColor": { type: "c", value: new THREE.Color( 0xffffff ) },
+
+                    "uMaterialColor":  { type: "c", value: new THREE.Color( 0xffffff ) },
+
+                    uKd: {
+                        type: "f",
+                        value: 0.7
+                    },
+                    uBorder: {
+                        type: "f",
+                        value: 0.4
+                    }
+                },
+
+                vertexShader: [
+
+                    "varying vec3 vNormal;",
+                    "varying vec3 vViewPosition;",
+
+                    "void main() {",
+
+                        "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+                        "vNormal = normalize( normalMatrix * normal );",
+                        "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
+                        "vViewPosition = -mvPosition.xyz;",
+
+                    "}"
+
+                ].join("\n"),
+
+                fragmentShader: [
+
+                    "uniform vec3 uMaterialColor;",
+
+                    "uniform vec3 uDirLightPos;",
+                    "uniform vec3 uDirLightColor;",
+
+                    "uniform float uKd;",
+                    "uniform float uBorder;",
+
+                    "varying vec3 vNormal;",
+                    "varying vec3 vViewPosition;",
+
+                    "void main() {",
+
+                        // compute direction to light
+                        "vec4 lDirection = viewMatrix * vec4( uDirLightPos, 0.0 );",
+                        "vec3 lVector = normalize( lDirection.xyz );",
+
+                        // diffuse: N * L. Normal must be normalized, since it's interpolated.
+                        "vec3 normal = normalize( vNormal );",
+                        //was: "float diffuse = max( dot( normal, lVector ), 0.0);",
+                        // solution
+                        "float diffuse = dot( normal, lVector );",
+                        "if ( diffuse > 0.6 ) { diffuse = 1.0; }",
+                        "else if ( diffuse > -0.2 ) { diffuse = 0.7; }",
+                        "else { diffuse = 0.3; }",
+
+                        "gl_FragColor = vec4( uKd * uMaterialColor * uDirLightColor * diffuse, 1.0 );",
+
+                    "}"
+
+                ].join("\n")
+
+            }
+
+            };
+
+            var structure = {pages:["Our Firm","Our Attorneys","Areas of Practice","Firm News","In The Community", "Contact Us"]};
+
+            var plight;
+            var animateCube = true;
+
+            var counter = 0;
+            var wall;
+
+			var scene = new THREE.Scene();
+			var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+
+            var linesObj = new THREE.Group();
+            var cardsObj = new THREE.Group();
+            var bioObj = new THREE.Group();
+
+            var totalObjects = 6;
+
+            var coords =[{x:-2,y:-2,z:-2},{x:-3,y:0,z:-1},{x:-2,y:2,z:-2},
+                         {x:2,y:-2,z:-2},{x:3,y:0,z:-1},{x:2,y:2,z:-2},
+                         {x:0,y:0,z:-10},{x:0,y:0,z:-10},{x:0,y:0,z:-10}];
+
+            var grid =[{x:-2,y:-1,z:1.5},{x:0,y:-1,z:1.5},{x:2,y:-1,z:1.5},
+                       {x:-2,y:0.25,z:1.5},{x:0,y:0.25,z:1.5},{x:2,y:0.25,z:1.5},
+                       {x:-2,y:1.5,z:1.5},{x:0,y:1.5,z:1.5},{x:2,y:1.5,z:1.5}];
+
+            var textureLoader = new THREE.TextureLoader();
+
+            var textureFlare0 = textureLoader.load( "textures/lensflare/lensflare0.png" );
+            var textureFlare2 = textureLoader.load( "textures/lensflare/lensflare2.png" );
+            var textureFlare3 = textureLoader.load( "textures/lensflare/lensflare3.png" );
+
+            var raycaster;
+            var mouse;
+
+            var objects = [];
+
+			var renderer = new THREE.WebGLRenderer({alpha:true,antialias:true});
+
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+			var geometry,material,cube,controls;
+
+            init();
+            animate();
+           // loadFont();
+
+            Path.listen();
+            Path.root("#/");
+
+
+            function createText(message) {
+
+                  var w = message.length;
+                  var shape = new THREE.TextGeometry(message,{font:_font,size:0.1,height:0.0125});
+                  var wrapper = new THREE.MeshBasicMaterial( { color: 0x000000} );
+                  var words = new THREE.Mesh(shape, wrapper);
+                  var box = new THREE.Box3().setFromObject( words);
+                  words.position.z=0.125;
+                  words.position.x=-box.size().x/2;
+                  words.position.y=-0.025;
+                  return words;
+
+            }
+
+
+            function init(){
+
+            controls = new THREE.OrbitControls( camera, renderer.domElement );
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            controls.enableZoom = false;
+
+
+// lens flares
+
+                addLight( 0.8, 0.8, 0.5,  0, 0, -10 );
+                addLight( 0.8, 0.8, 0.5,  0, 0, 0 );
+
+
+ //           loadFont();// then build cards
+
+            buildCube();
+
+ //         buildBios();
+ //         buildLogo();
+
+ //          buildLines();
+
+
+ //         setLights();
+
+			camera.position.z = 5;
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+            document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+
+            window.addEventListener( 'resize', onWindowResize, false );
+
+        }
+
+function buildTextSprite(){
+
+    var spritey = makeTextSprite( " Hello, ", 
+        { fontsize: 12, borderColor: {r:255, g:0, b:0, a:1.0}, backgroundColor: {r:255, g:100, b:100, a:0.8} } );
+    spritey.position.set(0,0,0);
+    scene.add( spritey );
+
+}
+
+        function setLights(){
+
+/*
+            var light = new THREE.DirectionalLight( 0xFFFFFF, 1 );
+            light.position.set( 0, 0,2 );
+            var targ = new THREE.Object3D(); 
+
+            targ.position.x =0;
+            targ.position.y =0;
+            targ.position.z =0;
+
+            light.target = targ;
+            light.castShadow = true;
+            light.shadowDarkness = 0.5;
+
+            scene.add( light );
+
+*/
+//
+
+        var spotLight = new THREE.SpotLight( 0xDDDDDD);
+        spotLight.position.set( 0, 0, 1000 );
+
+        spotLight.intensity = 0.25;
+        spotLight.castShadow = true;
+        spotLight.onlyShadow = true;
+
+        spotLight.shadowMapWidth = 1024*4;
+        spotLight.shadowMapHeight = 1024*4;
+
+        spotLight.shadowCameraNear = 500;
+        spotLight.shadowCameraFar = 1500;
+        spotLight.shadowCameraFov = 60;
+
+        scene.add( spotLight );
+
+        }
+
+        function tweenObject(params){
+
+            var obj = params.obj;
+            var _current = params.obj.position;
+            var _speed = params.speed || 500;
+            var _dest = params.destination;
+            var _delay = params.delay; 
+
+            var tween = new TWEEN.Tween(_current).to(_dest, _speed);
+
+            tween.easing(TWEEN.Easing.Back.InOut);
+
+            tween.onUpdate(function(){
+                obj.position.x = _current.x;
+                obj.position.y = _current.y;
+                obj.position.z = _current.z;
+            });
+
+            tween.delay(_delay);
+
+            tween.start();
+
+        }
+
+        function gridBio(){
+
+            var _objects = bioObj.children;
+
+            for(var i = 0; i<_objects.length ;i++){
+                    var newgrid = {z:1.5, y:grid[i].y,x:grid[i].x*1.25};
+
+                    tweenObject({obj:_objects[i],destination:newgrid,delay:i*100});
+            }
+
+            hideAll();
+
+        }
+        function hideBio(){
+
+            var _objects = bioObj.children;
+
+            for(var i = 0; i<_objects.length ;i++){
+
+                    var newgrid = {};
+                    newgrid.z = -10;
+                    newgrid.y = 0;
+                    newgrid.x = 0;
+                    tweenObject({obj:_objects[i],destination:newgrid,delay:i*100});
+            }
+
+            restoreAll();
+
+        }
+
+        function hideAll(){
+
+            for(var i = 0; i<objects.length ;i++){
+                    objects[i].material.color.setHex(  0xFFFFFF);
+
+                    var newgrid = {};
+                    newgrid.z = -10;
+                    newgrid.y = 0;
+                    newgrid.x = 0;
+
+                    tweenObject({obj:objects[i],destination:newgrid,delay:i*100});
+            }
+
+        }
+
+
+        function gridAll(_obj,_objects){
+
+            _objects = _objects || objects;
+
+            for(var i = 0; i<_objects.length ;i++){
+                if(objects[i]!= _obj){
+                    objects[i].material.color.setHex(  0xFFFFFF);
+
+                    var newgrid =  {x:grid[i].x,y:grid[i].y+0.5,z:0};
+
+                    tweenObject({obj:objects[i],destination:newgrid,delay:i*100});
+                }
+            }
+
+        }
+
+        function restoreAll(_obj){
+
+            for(var i = 0; i<objects.length ;i++){
+                if(objects[i]!= _obj){
+                    objects[i].material.color.setHex(  0xFFFFFF);
+                    tweenObject({obj:objects[i],destination:coords[i],delay:i*100,speed:300});
+                }
+            }
+
+        }
+
+        function onDocumentTouchStart( event ) {
+                    
+                event.preventDefault();
+                
+                event.clientX = event.touches[0].clientX;
+                event.clientY = event.touches[0].clientY;
+                onDocumentMouseDown( event );
+
+            }   
+
+            function onDocumentMouseDown( event ) {
+
+                event.preventDefault();
+
+                mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
+                mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
+
+                raycaster.setFromCamera( mouse, camera );
+
+                var intersects = raycaster.intersectObjects( objects );
+
+                if ( intersects.length > 0 ) {
+
+                    var theobj = intersects[0].object;
+
+                   // theobj.material.color.setHex( Math.random() * 0xffffff );
+
+                    if(theobj.position.x !=0){
+                        theobj.material.color.setHex(  0x333333);
+                        restoreAll(theobj);
+                        tweenObject({obj:theobj,destination:{z:1,x:0,y:0},delay:250});
+                    }else{
+                        restoreAll();
+                    }
+
+                    console.log(theobj);
+
+                    if(theobj.name == "OUR ATTORNEYS"){
+                        gridBio();
+                        tweenObject({obj:theobj,destination:{z:-10,x:0,y:0},delay:250});
+                    }
+
+                }else{
+                        restoreAll();
+                        hideBio();
+                }
+
+            }
+
+function buildWall(){
+
+	    var cardM = new THREE.MeshBasicMaterial( { color: 0xFFFFFF} );
+        var cardG = new THREE.BoxGeometry(20,20,0.5);
+
+        cardM.side = THREE.DoubleSide;
+        wall = new THREE.Mesh(cardG,cardM);
+
+        wall.position.z = -2.5;
+
+        wall.castShadow = false;
+        wall.receiveShadow = true;
+
+        scene.add(wall);
+
+}
+
+        function loadFont() {
+                var loader = new THREE.FontLoader();
+                loader.load( 'scripts/Open Sans Light_Regular.js', function ( response ) {
+                    _font = response;
+
+             //       buildCards();
+ //                     buildBlocks();
+
+                } );
+        }
+
+function buildBios(){
+    var bioObjectList=[];
+
+    for(var i = 0; i<9; i++){
+
+        var loader = new THREE.TextureLoader();
+        // load a resource
+        loader.load(
+            // resource URL
+        'textures/pro/bio- '+(i+1)+'.jpg',
+            // Function when resource is loaded
+            function ( texture ) {
+                // do something with the texture
+                var cardM = new THREE.MeshBasicMaterial( {
+                    map: texture,transparent:true
+                 } );
+
+                cardM.side = THREE.DoubleSide;
+
+                  var cardG= new THREE.PlaneGeometry(1*2,0.57*2);
+
+                  var card = new THREE.Mesh(cardG,cardM);
+
+                    card.position.z = -3;
+                    bioObj.add(card);
+                    bioObjectList.push(card);
+            },
+
+            // Function called when download progresses
+            function ( xhr ) {
+                console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+            },
+            // Function called when download errors
+            function ( xhr ) {
+                console.log( 'An error happened' );
+            }
+        );
+
+    };
+
+    scene.add(bioObj);
+
+    gridBio();
+
+}
+
+
+function createShaderMaterial(id, light) {
+
+                var shader = THREE.ShaderTypes[id];
+
+                var u = THREE.UniformsUtils.clone(shader.uniforms);
+
+                var vs = shader.vertexShader;
+                var fs = shader.fragmentShader;
+
+                var material = new THREE.ShaderMaterial({ uniforms: u, vertexShader: vs, fragmentShader: fs });
+
+                material.uniforms.uDirLightPos.value = light.position;
+                material.uniforms.uDirLightColor.value = light.color;
+
+                return material;
+
+            }
+
+
+function buildCube(){
+
+            cube = new THREE.Group();
+
+// MATERIALS
+
+/*
+                plight = new THREE.DirectionalLight(0xff0000, 1.0);
+                plight.position.set(0, 20, 0);
+                scene.add(plight);
+                phongMaterial = createShaderMaterial("phongDiffuse", plight);
+                phongMaterial.uniforms.uMaterialColor.value.copy(materialColor);
+                phongMaterial.side = THREE.DoubleSide;
+*/
+
+        var planeMaterial = new THREE.MeshPhongMaterial({
+          specular: 0xFFFFFF,         // Specular color of the material (light)
+          color: 0xAAAAAA,            // Geometry color in hexadecimal
+          emissive: 0xDDDDDD,         // Emissive color of the material (dark)
+          shininess: 30,              // How shiny the specular highlight is
+          shading: THREE.FlatShading  // NoShading, FlatShading or SmoothShading
+          , side : THREE.DoubleSide
+        });
+
+        var wireframeMaterial = new THREE.MeshBasicMaterial({
+          color: 0xFFFFFF,
+          wireframe: true,
+          wireframeLinewidth :3
+        });
+
+       var lambertRedMaterial = new THREE.MeshLambertMaterial({
+                color  : 0xff0000
+                , side : THREE.FrontSide
+            });
+
+        var lambertWhiteMaterial = new THREE.MeshLambertMaterial({
+            color     : 0xffffff
+            , side    : THREE.BackSide
+        });
+
+        geometry = new THREE.IcosahedronGeometry(
+                            2, 0 
+                  );
+
+        geometry.computeFaceNormals();
+
+        cubeM = new THREE.Mesh( geometry, planeMaterial);
+        var wireframe = new THREE.Mesh(geometry, wireframeMaterial);
+
+        cube.add(wireframe);
+        cube.add( cubeM );
+        scene.add( cube );
+
+        render();
+
+/*
+        var egh = new THREE.EdgesHelper( cube, 0xFF0000 );
+        scene.add( egh ); 
+        cube.castShadow = true;
+        cube.receiveShadow = false;
+
+        cube = new THREE.Mesh( geometry, material );
+        cube.castShadow = true;
+        cube.receiveShadow = false;
+                var logoM = new THREE.MeshBasicMaterial( {
+                    map: texture,transparent:true
+                 } );
+ //       geometry = new THREE.BoxGeometry(1.25,1.25 , 1.25);
+     //   material = new THREE.MeshBasicMaterial( { color: 0xbbbbbb} );
+*/
+}
+
+function buildLogo(){
+
+// instantiate a loader
+var loader = new THREE.TextureLoader();
+
+// load a resource
+loader.load(
+    // resource URL
+'textures/icons/logo.png',
+    // Function when resource is loaded
+    function ( texture ) {
+        // do something with the texture
+        var logoM = new THREE.MeshBasicMaterial( {
+            map: texture,transparent:true
+         } );
+
+        logoM.side = THREE.DoubleSide;
+
+          var logoG = new THREE.PlaneGeometry(0.75,1);
+          var logo = new THREE.Mesh(logoG,logoM);
+          logo.position.z =1.25;
+          scene.add(logo);
+          render();
+
+    },
+
+    // Function called when download progresses
+    function ( xhr ) {
+        console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+    },
+    // Function called when download errors
+    function ( xhr ) {
+        console.log( 'An error happened' );
+    }
+);
+
+}
+
+
+         function lensFlareUpdateCallback( object ) {
+
+                var f, fl = object.lensFlares.length;
+                var flare;
+                var vecX = -object.positionScreen.x * 2;
+                var vecY = -object.positionScreen.y * 2;
+
+
+                for( f = 0; f < fl; f++ ) {
+
+                    flare = object.lensFlares[ f ];
+
+                    flare.x = object.positionScreen.x + vecX * flare.distance;
+                    flare.y = object.positionScreen.y + vecY * flare.distance;
+
+                    flare.rotation = 0;
+
+                }
+
+                object.lensFlares[ 2 ].y += 0.025;
+                object.lensFlares[ 3 ].rotation = object.positionScreen.x * 0.5 + THREE.Math.degToRad( 45 );
+
+            }
+
+                function addLight( h, s, l, x, y, z ) {
+
+                     var light = new THREE.PointLight( 0xffffff, 1.5, 2000 );
+                    light.color.setHSL( h, s, l );
+                    light.position.set( x, y, z );
+                    scene.add( light );
+
+                    var flareColor = new THREE.Color( 0xffffff );
+                    flareColor.setHSL( h, s, l + 0.5 );
+
+                    var lensFlare = new THREE.LensFlare( textureFlare0, 700, 0.0, THREE.AdditiveBlending, flareColor );
+
+                    lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+                    lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+                    lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+
+                    lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
+                    lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
+                    lensFlare.add( textureFlare3, 120, 0.9, THREE.AdditiveBlending );
+                    lensFlare.add( textureFlare3, 70, 1.0, THREE.AdditiveBlending );
+
+                    lensFlare.customUpdateCallback = lensFlareUpdateCallback;
+                    lensFlare.position.copy( light.position );
+
+                    scene.add( lensFlare );
+
+                }
+
+
+function buildLines(){
+
+            var lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0xbbbbbb
+            });
+
+            for(var i = 0; i<12; i++){
+               var geometry = new THREE.Geometry();
+                geometry.vertices.push(new THREE.Vector3(-20, 0, 0));
+                geometry.vertices.push(new THREE.Vector3(20, 0, 0));
+                var line = new THREE.Line(geometry, lineMaterial);
+                line.position.y = -6+i*1;
+                line.position.z = -2+Math.round(Math.random()*10)-5;
+                linesObj.add(line);
+            }
+            for(var i = 0; i<12; i++){
+               var geometry = new THREE.Geometry();
+                geometry.vertices.push(new THREE.Vector3(0, 20, 0));
+                geometry.vertices.push(new THREE.Vector3(0, -20, 0));
+                var line = new THREE.Line(geometry, lineMaterial);
+                line.position.x = -6+i*1;
+                line.position.z = -2+Math.round(Math.random()*10)-5;
+                linesObj.add(line);
+            }
+
+            scene.add(linesObj);
+}
+
+        function animate() {
+          requestAnimationFrame( animate );
+
+            if(animateCube){
+                   // counter ++;
+                    cube.rotation.x += 0.005;
+                    cube.rotation.y += 0.005;
+                  //  wall.position.z = Math.sin(counter*0.02)*4-2;
+            }
+
+
+          render();
+
+          TWEEN.update();
+          controls.update();
+
+        }
+
+        function render() {
+          renderer.render( scene, camera );
+        }
+
+
+        function onWindowResize() {
+
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+
+                renderer.setSize( window.innerWidth, window.innerHeight );
+
+            }
+
+function buildBlocks(){
+
+    for(var i = 0; i<totalObjects; i++){
+
+	    var cardM = new THREE.MeshBasicMaterial( { color: 0xCCCCCC,opacity:0.3,transparent:true} );
+        var cardG = new THREE.BoxGeometry(1.5,1,5);
+        cardM.side = THREE.DoubleSide;
+        var card = new THREE.Mesh(cardG,cardM);
+        var xpos = (Math.round(Math.random()*2-1)*4);
+        card.position.x = coords[i].x;
+        card.position.y = coords[i].y;
+        card.position.z = coords[i].z;
+
+        var egh2 = new THREE.EdgesHelper( card, 0x888888 );
+        egh2.material.linewidth = 2;
+        scene.add( egh2 ); 
+
+        card.castShadow = true;
+        card.receiveShadow = false;
+
+        cardsObj.add(card);
+        objects.push(card);
+
+    };
+
+    scene.add(cardsObj);
+
+}
+
+
+
+		</script>
+	</body>
+</html>

@@ -1,0 +1,146 @@
+<html>
+
+	<head>
+		<title>Digital Function</title>
+        <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700,300,800' rel='stylesheet' type='text/css'> 
+		<style>
+			body { margin: 0; 
+                   background:#DDDDDD;
+                   height:100%;
+                   width:100%;
+                   overflow:hidden;
+                    font-family:sans-serif;
+                    font-size:1.125em;
+            }
+			canvas { 
+                position:absolute;
+                top:0;
+                left:0;
+                width: 100%; 
+                height: 100% 
+                z-index:0;
+            }
+
+            .controls{
+                width:100%;
+                position:absolute;
+                bottom:0;
+                left:0;
+                background:black;
+                font-family:sans-serif;
+                height:40px;
+                z-index:1;
+            }
+            .controls a{
+                color:white;
+                width:30%;
+                margin:0;
+                padding:0;
+                float:left;
+                text-align:center;
+                height:100%;
+                font-size:1em;
+                text-transform:uppercase;
+                text-decoration:none;
+                padding:0.75em;
+            }
+            .header{
+                position: absolute;
+                top: -120px;
+                height: 120px;
+                z-index: 1;
+                width: 100%;
+                left: 0;
+                background: white;
+
+                  -webkit-transition: top 0.3s ease-out;  /* Android 2.1+, Chrome 1-25, iOS 3.2-6.1, Safari 3.2-6  */
+                          transition: top 0.3s ease-out;  /* Chrome 26, Firefox 16+, iOS 7+, IE 10+, Opera, Safari 6.1+  */
+
+ /*             box-shadow: 10px 10px 100px darkgray; */
+            }
+.header.passive{
+
+                top: -120px;
+}
+.header.active{
+
+                top: 0px;
+}
+            .logo{
+                background: url("textures/icons/bw.png");
+                width: 110px;
+                height: 100px;
+                float: left;
+                background-repeat: no-repeat;
+                background-size: contain;
+                margin-left: 20px;
+                margin-top: 14px;
+            }
+
+        .sidebar {
+            height: 100%;
+            width: 40vw;
+            background: #FFF;
+            position: absolute;
+            z-index: 1;
+            right: -45vw;
+            padding: 1.25em;
+            overflow: auto;
+            padding-bottom: 200px;
+          -webkit-transition: right 0.3s ease-out;  /* Android 2.1+, Chrome 1-25, iOS 3.2-6.1, Safari 3.2-6  */
+                  transition: right 0.3s ease-out;  /* Chrome 26, Firefox 16+, iOS 7+, IE 10+, Opera, Safari 6.1+  */
+        }
+        .sidebar.active{
+            right: 0vw;
+        }
+        .sidebar.passive{
+            right: -45vw;
+        }
+
+		</style>
+	</head>
+
+	<body>
+
+<div class="header" id="header">
+    <div class="logo"></div>
+</div>
+
+<div class="sidebar" id="sidebar">
+	<div class="subhead">
+		<h1>Firm Overview</h1>
+	</div>
+<h2>
+ National Practice</h2>
+<p>
+ Baker • Wotring LLP is a nationally-recognized commercial litigation and environmental boutique law firm providing innovative and results-oriented representation to domestic and international clients in significant and complex matters across the country for more than a decade.  Our lawyers have been retained in connection with some of the largest litigation and environmental matters in the country, including providing representation in connection with the Deepwater Horizon Gulf Oil Spill and other massive releases into waterways, catastrophic accidents and large-scale commercial litigation for energy, transportation, oil and gas, and industrial clients, among others.  Since its inception, the Firm’s clients have included governmental entities, Fortune 500 companies, railroads, port authorities, hospitals, businesses of all sizes and individuals.</p>
+
+<h2>
+ National Recognition – True Litigators</h2>
+<p>
+ What sets Baker • Wotring LLP apart is that together, our lawyers have actually tried hundreds of cases to verdict.  As true trial lawyers, our lawyers are a constant presence at the courthouse and go to trial with a frequency not often seen in today’s legal climate.  Firm trial teams have spent weeks and months in trial numerous times in complex cases involving personal injury, death and catastrophic injury, commercial disputes, environmental litigation, as well as arguing appeals in various appellate courts.  We have achieved precedent-setting results and made new law, with results from our cases published, cited to and relied upon by other courts and practitioners around the country.  The depth of actual courtroom experience, bench strength and proven trial record have made Baker • Wotring LLP a repeat choice of sophisticated clients who need experienced, tried-and-true litigators to handle their complex, high-stakes litigation.</p>
+
+<h2>
+ Areas of Practice</h2>
+<p>
+ Our most well-known practice areas include Environmental Litigation, Contribution and Cost Recovery; Environmental Regulatory Practice; Environmental Transactions and Risk Management; Natural Resources; Railroad Operations and Litigation; Ports and Port-Related Businesses; Contaminated Sediments; Industrial Accidents, Catastrophic Releases and Emergency Response; Commercial Litigation; Healthcare, Medical and Pharmaceutical Litigation; Oil and Gas/Pipeline Practice; and Appellate Practice. Our Firm also is actively involved in partnering relationships with our clients and other firms around the country.  Information regarding our participation in these types of representations is also included in our practice area descriptions. Please visit our website's "areas of practice" section for more detailed information of our experience and qualifications in these areas.</p>
+
+<h2>
+ Community and Bar Leaders</h2>
+<p>
+ In addition to our commitment to our clients, the lawyers at Baker • Wotring LLP have deep ties to the community and the bar and place a high priority on community service and charitable activities.  The Firm has a long history of leadership positions in the state and local bar, including having lawyers serve as President of the 11,000 member Houston Bar Association and Chair of the Houston Bar Foundation, the HBA’s charitable arm, among many other positions.  Please visit our website’s “community service” section to learn more about the Firm’s culture and commitment to diversity, pro bono, gender fairness, and community service projects.  Please visit our website’s “firm news” section to read articles about the Firm, and view announcements and news about our attorneys.</p>
+</div>
+
+<div class="controls">
+	<a  href="#" ontouchend="restoreAll();" onclick="restoreAll();">restore</a>
+</div>
+
+        <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+		<script src='scripts/path.min.js'></script> 
+		<script src='scripts/three.min.js'></script> 
+		<script src='scripts/Tween.js'></script>
+		<script src='scripts/OrbitControls.js'></script>
+		<script src='scripts/services.js'></script>
+		<script src='scripts/main.js'></script>
+	</body>
+</html>
